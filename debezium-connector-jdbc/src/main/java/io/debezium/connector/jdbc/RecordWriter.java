@@ -44,15 +44,30 @@ public class RecordWriter {
     public void write(List<JdbcSinkRecord> records, String sqlStatement) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
-        final Transaction transaction = session.beginTransaction();
+        int retryCount=0;
+        int maxRetry=20;
+        int sleepTimeMs = 50;
+        while (true) {
+            final Transaction transaction = session.beginTransaction();
 
-        try {
-            session.doWork(processBatch(records, sqlStatement));
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
+            try {
+                session.doWork(processBatch(records, sqlStatement));
+                transaction.commit();
+                break;
+            }
+            catch (Exception e) {
+                transaction.rollback();
+                retryCount++;
+                if (retryCount == maxRetry) {
+                    throw e;
+                }
+                LOGGER.info("Failed to handle tx with error {}, retrying...", e.getMessage());
+                try {
+                    Thread.sleep(sleepTimeMs);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
         }
         writeStopwatch.stop();
         LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
@@ -83,32 +98,10 @@ public class RecordWriter {
                 allbindStopwatch.stop();
                 LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
 
-                int[] batchResult;
                 Stopwatch executeStopwatch = Stopwatch.reusable();
                 executeStopwatch.start();
 
-                int retryCount = 0;
-                int maxRetry = 20;
-                int sleepTimeMS = 50;
-
-                while (true) {
-                    try {
-                        batchResult = prepareStatement.executeBatch();
-                        break;
-                    }
-                    catch (Exception e) {
-                        retryCount++;
-                        if (retryCount == maxRetry) {
-                            throw e;
-                        }
-                        LOGGER.info("Failed to write batch with err {}, retrying...", e.getMessage());
-                        try {
-                            Thread.sleep(sleepTimeMS);
-                        } catch (InterruptedException ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                }
+                int[] batchResult = prepareStatement.executeBatch();
                 executeStopwatch.stop();
                 for (int updateCount : batchResult) {
                     if (updateCount == Statement.EXECUTE_FAILED) {
