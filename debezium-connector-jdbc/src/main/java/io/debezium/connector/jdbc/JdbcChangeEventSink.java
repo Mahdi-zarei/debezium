@@ -11,7 +11,13 @@ import static io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -365,11 +371,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             }
             return table;
         } else {
-        table = readTable(collectionId);
-        missingFields = dialect.resolveMissingFields(record, table);
-        if (missingFields.isEmpty()) {
-            tableCache.put(collectionId, table);
-            return table;
+            table = readTable(collectionId);
+            missingFields = dialect.resolveMissingFields(record, table);
+            if (missingFields.isEmpty()) {
+                tableCache.put(collectionId, table);
+                return table;
+            }
         }
 
         LOGGER.debug("The follow fields are missing in the table: {}", missingFields);
