@@ -11,12 +11,7 @@ import static io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -54,6 +49,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final StatelessSession session;
 
     private final RecordWriter recordWriter;
+    private final HashMap<CollectionId, TableDescriptor> tableCache;
     private final int flushMaxRetries;
     private final Duration flushRetryDelay;
 
@@ -62,6 +58,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
+        this.tableCache = new HashMap<>();
         this.flushMaxRetries = config.getFlushMaxRetries();
         this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
 
@@ -304,6 +301,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private boolean hasTable(CollectionId collectionId) {
+        if (tableCache.get(collectionId) != null) {
+            return true;
+        }
         return session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId));
     }
 
@@ -331,7 +331,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             throw e;
         }
 
-        return readTable(collectionId);
+        final TableDescriptor createdTable = readTable(collectionId);
+        tableCache.put(collectionId, createdTable);
+        return createdTable;
     }
 
     private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
@@ -342,14 +344,31 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             throw new SQLException("Could not find table: " + collectionId.toFullIdentiferString());
         }
 
-        // Resolve table metadata from the database
-        final TableDescriptor table = readTable(collectionId);
+        TableDescriptor table;
+        boolean cacheHit = false;
+
+        final TableDescriptor cachedTable = tableCache.get(collectionId);
+        if (cachedTable != null) {
+            table = cachedTable;
+            cacheHit = true;
+        } else {
+            table = readTable(collectionId);
+        }
 
         // Delegating to dialect to deal with database case sensitivity.
         Set<String> missingFields = dialect.resolveMissingFields(record, table);
         if (missingFields.isEmpty()) {
             // There are no missing fields, simply return
             // todo: should we check column type changes or default value changes?
+            if (!cacheHit) {
+                tableCache.put(collectionId, table);
+            }
+            return table;
+        } else {
+        table = readTable(collectionId);
+        missingFields = dialect.resolveMissingFields(record, table);
+        if (missingFields.isEmpty()) {
+            tableCache.put(collectionId, table);
             return table;
         }
 
@@ -380,7 +399,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             throw e;
         }
 
-        return readTable(collectionId);
+            final TableDescriptor changedTable=readTable(collectionId);
+            tableCache.put(collectionId, changedTable);
+            return changedTable;
     }
 
     private String getSqlStatement(TableDescriptor table, JdbcSinkRecord record) {

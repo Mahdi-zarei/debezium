@@ -46,7 +46,7 @@ public class RecordWriter {
         writeStopwatch.start();
         int retryCount=0;
         int maxRetry=20;
-        int sleepTimeMs = 50;
+        int sleepTimeMs = 10;
         while (true) {
             final Transaction transaction = session.beginTransaction();
 
