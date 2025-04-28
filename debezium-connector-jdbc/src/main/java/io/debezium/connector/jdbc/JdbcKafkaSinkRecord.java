@@ -139,7 +139,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
     private void applyRecordKeyAsPrimaryKey() {
         final Schema keySchema = keySchema();
         if (keySchema == null) {
-            throw new ConnectException("Configured primary key mode 'record_key' cannot have null schema");
+            return;
         }
         else if (keySchema.type().isPrimitive()) {
             applyPrimitiveRecordKeyAsPrimaryKey(keySchema);
