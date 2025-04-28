@@ -23,7 +23,8 @@ public class DefaultTableNamingStrategy extends DefaultCollectionNamingStrategy 
 
     @Override
     public String resolveTableName(JdbcSinkConnectorConfig config, SinkRecord record) {
-        return super.resolveCollectionName(new KafkaDebeziumSinkRecord(record), config.getCollectionNameFormat());
+        String[] parts = record.topic().split("\\.");
+        return parts[2];
     }
 
 }

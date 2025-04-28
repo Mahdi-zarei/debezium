@@ -100,7 +100,7 @@ public class CollectionId {
 
     @JsonGetter("name")
     public String name() {
-        return this.name;
+        return name.split("\\.")[2];
     }
 
     @Override
