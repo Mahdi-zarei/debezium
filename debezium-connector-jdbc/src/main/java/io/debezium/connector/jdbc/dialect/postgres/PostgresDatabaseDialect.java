@@ -99,24 +99,13 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
-        builder.append("INSERT INTO ");
+        builder.append("UPSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
         builder.appendLists(",", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
         builder.appendLists(",", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
-        builder.append(") ON CONFLICT (");
-        builder.appendList(",", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
-        if (record.getNonKeyFieldNames().isEmpty()) {
-            builder.append(") DO NOTHING");
-        }
-        else {
-            builder.append(") DO UPDATE SET ");
-            builder.appendList(",", record.getNonKeyFieldNames(), (name) -> {
-                final String columnNme = columnNameFromField(name, record);
-                return columnNme + "=EXCLUDED." + columnNme;
-            });
-        }
+        builder.append(")");
         return builder.build();
     }
 
