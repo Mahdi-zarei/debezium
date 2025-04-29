@@ -83,15 +83,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             validate(record);
 
-            Optional<CollectionId> optionalCollectionId = getCollectionIdFromRecord(record);
-            if (optionalCollectionId.isEmpty()) {
-
-                LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name", record.topicName(), record.partition(),
-                        record.offset());
-                continue;
-            }
-
-            final CollectionId collectionId = optionalCollectionId.get();
+            final CollectionId collectionId = new CollectionId(record.topicName().split("\\.")[2]);
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
