@@ -119,31 +119,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public CollectionId getCollectionId(String tableName) {
-        final String[] parts = io.debezium.relational.TableId.parseParts(tableName);
-
-        if (parts.length == 3) {
-            // If the parse returns 3 elements, this will be used by default regardless of the
-            // name qualifier support dialect configuration.
-            return new CollectionId(parts[0], parts[1], parts[2]);
-        }
-        else if (parts.length == 2) {
-            // If a name qualifier support configuration is available and it supports catalogs but
-            // no schemas, then the value will be injected into the database/catalog part, else it
-            // will be used as the schema bit.
-            final NameQualifierSupport nameQualifierSupport = dialect.getNameQualifierSupport();
-            if (nameQualifierSupport != null && nameQualifierSupport.supportsCatalogs()) {
-                if (!nameQualifierSupport.supportsSchemas()) {
-                    return new CollectionId(parts[0], null, parts[1]);
-                }
-            }
-            return new CollectionId(parts[0], parts[1]);
-        }
-        else if (parts.length == 1) {
-            return new CollectionId(parts[0]);
-        }
-        else {
-            throw new DebeziumException("Failed to parse table name into TableId: " + tableName);
-        }
+        return new CollectionId(tableName);
     }
 
     @Override

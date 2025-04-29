@@ -55,18 +55,8 @@ public class CollectionId {
     private final String realm;
 
     public CollectionId(String realm, String namespace, String name) {
-        if ("null".equalsIgnoreCase(realm)) {
-            this.realm = null;
-        }
-        else {
-            this.realm = realm;
-        }
-        if ("null".equalsIgnoreCase(namespace)) {
-            this.namespace = null;
-        }
-        else {
-            this.namespace = namespace;
-        }
+        this.realm = null;
+        this.namespace = null;
         if ("null".equalsIgnoreCase(name)) {
             this.name = null;
         }
@@ -76,7 +66,7 @@ public class CollectionId {
     }
 
     public CollectionId(String namespace, String name) {
-        this(null, namespace, name);
+        this(null, null, name);
     }
 
     public CollectionId(String name) {
@@ -90,17 +80,17 @@ public class CollectionId {
 
     @JsonGetter("realm")
     public String realm() {
-        return this.realm;
+        return null;
     }
 
     @JsonGetter("namespace")
     public String namespace() {
-        return this.namespace;
+        return null;
     }
 
     @JsonGetter("name")
     public String name() {
-        return name.split("\\.")[2];
+        return this.name;
     }
 
     @Override

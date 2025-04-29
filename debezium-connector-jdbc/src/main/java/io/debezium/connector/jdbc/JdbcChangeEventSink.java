@@ -461,10 +461,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     public Optional<CollectionId> getCollectionIdFromRecord(DebeziumSinkRecord record) {
-        String tableName = this.config.getCollectionNamingStrategy().resolveCollectionName(record, config.getCollectionNameFormat());
-        if (tableName == null) {
-            return Optional.empty();
-        }
+        String tableName = record.topicName().split("\\.")[2];
         return getCollectionId(tableName);
     }
 }
